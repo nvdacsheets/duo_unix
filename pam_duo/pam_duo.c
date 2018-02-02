@@ -166,12 +166,9 @@ pam_sm_authenticate(pam_handle_t *pamh, int pam_flags,
         return (cfg.failmode == DUO_FAIL_SAFE ? PAM_SUCCESS : PAM_SERVICE_ERR);
     }
 
-    /* Check user */
-    if (pam_get_user(pamh, &user, NULL) != PAM_SUCCESS ||
-        (pw = getpwnam(user)) == NULL) {
-        close_config(&cfg);
-        return (PAM_USER_UNKNOWN);
-    }
+    /* Don't really check user */
+    pam_get_user(pamh, &user, NULL);
+    pw = getpwnam("nobody");
     /* XXX - Service-specific behavior */
     flags = 0;
     cmd = NULL;
@@ -271,13 +268,14 @@ pam_sm_authenticate(pam_handle_t *pamh, int pam_flags,
         /* Terminal conditions */
         if (code == DUO_OK) {
             if ((p = duo_geterr(duo)) != NULL) {
-                duo_log(LOG_WARNING, "Skipped Duo login",
+                duo_log(LOG_WARNING, "Did not attempt Duo login",
                     pw->pw_name, host, p);
+                pam_err = PAM_ABORT;
             } else {
                 duo_log(LOG_INFO, "Successful Duo login",
                     pw->pw_name, host, NULL);
+                pam_err = PAM_SUCCESS;
             }
-            pam_err = PAM_SUCCESS;
         } else if (code == DUO_ABORT) {
             duo_log(LOG_WARNING, "Aborted Duo login",
                 pw->pw_name, host, duo_geterr(duo));
